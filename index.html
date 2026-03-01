@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>うどんクリッカー</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; background-color: #fdf5e6; margin: 0; overflow-x: hidden; color: #333; user-select: none; }
+        .rare-item { position: fixed; width: 110px; cursor: pointer; z-index: 50; display: none; will-change: transform; transform: translateZ(0); touch-action: none; }
+        @keyframes rainbowText { 0% { color: #ff0000; } 20% { color: #ffff00; } 40% { color: #00ff00; } 60% { color: #00ffff; } 80% { color: #0000ff; } 100% { color: #ff00ff; } }
+        @keyframes rainbowBackground { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        .fever-mode { background: linear-gradient(270deg, #ff9999, #ffcc99, #ffff99, #99ff99, #99ccff, #9999ff, #cc99ff); background-size: 400% 400%; animation: rainbowBackground 10s ease infinite; }
+        #fever-timer { display:none; font-weight:bold; font-size:2.5rem; margin:10px 0; animation: rainbowText 1s linear infinite; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        
+        #flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; opacity: 0; pointer-events: none; z-index: 1000; }
+        @keyframes flashAnim { 0% { opacity: 0.8; } 100% { opacity: 0; } }
+        .do-flash { animation: flashAnim 0.5s ease-out forwards; }
+        
+        #notify-msg { position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%); background: rgba(139, 69, 19, 0.9); color: white; padding: 20px 40px; border-radius: 50px; font-weight: bold; z-index: 2000; display: none; pointer-events: none; white-space: nowrap; }
+        @keyframes fadeOutMsg { 0% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -100%) scale(1.1); } }
+
+        #game-wrapper { width: 98%; max-width: 1000px; margin: 0 auto; padding: 10px; }
+        #main-layout { display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
+        
+        .panel { 
+            background: white; padding: 15px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+            flex: 1; min-width: 280px; max-width: 320px; max-height: 70vh; overflow-y: auto; 
+            scrollbar-width: thin; scrollbar-color: #d2691e #fdf5e6; 
+        }
+        .panel::-webkit-scrollbar { width: 8px; }
+        .panel::-webkit-scrollbar-track { background: #fdf5e6; border-radius: 10px; }
+        .panel::-webkit-scrollbar-thumb { background-color: #d2691e; border-radius: 10px; }
+
+        #click-panel { flex: 1.4; min-width: 320px; max-width: 400px; display: flex; flex-direction: column; align-items: center; background: none; box-shadow: none; max-height: none; }
+        
+        #udon-button { background: none; border: none; cursor: pointer; padding: 0; width: 280px; margin: 15px 0; outline: none; touch-action: manipulation; }
+        #udon-button img { width: 100%; height: auto; border-radius: 40px; filter: drop-shadow(0 12px 20px rgba(0,0,0,0.25)); pointer-events: none; transition: transform 0.05s ease-out; }
+        
+        .stats-bar { background: #8b4513; color: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; justify-content: space-around; font-weight: bold; font-size: 0.9em; flex-wrap: wrap; gap: 10px; }
+        .timer-bar { background: #deb887; color: #5d2e0a; padding: 12px 18px; border-radius: 8px; margin-bottom: 10px; font-size: 0.8em; font-weight: bold; display: flex; flex-direction: column; justify-content: center; }
+        .timer-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
+        
+        .list-item { background: #fff; border: 2px solid #deb887; padding: 12px; margin: 8px 0; cursor: pointer; border-radius: 10px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; text-align: left; transition: background 0.2s; }
+        .disabled { opacity: 0.4; cursor: not-allowed; background: #eee !important; border-color: #ccc; }
+        
+        .divider { border: none; border-top: 4px double #deb887; margin: 15px 0; width: 100%; }
+        
+        .item-info { flex: 1; pointer-events: none; min-width: 0; }
+        .item-name { font-weight: bold; display: block; color: #5d2e0a; font-size: 14px; margin-bottom: 2px; }
+        .item-desc { font-size: 11px; color: #8b4513; display: block; opacity: 0.9; margin-bottom: 4px; line-height: 1.3; }
+        .item-total { font-size: 11px; color: #d2691e; font-weight: bold; display: block; }
+        .item-cost { font-weight: bold; color: #8b4513; margin-left: 10px; min-width: 75px; text-align: right; border-left: 1px solid #eee; padding-left: 10px; font-size: 13px; }
+        
+        .item-flavor { font-size: 10px; color: #a0522d; font-style: italic; display: block; width: 100%; margin-top: 8px; padding-top: 4px; border-top: 1px dashed #eee; opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+        
+        #prestige-container { margin-top: 15px; display: none; flex-direction: column; align-items: center; width: 100%; }
+        #prestige-lock-msg { color: #d21e1e; font-weight: bold; font-size: 14px; background: #fff; border: 2px solid #d21e1e; padding: 8px 15px; border-radius: 10px; margin-bottom: 10px; }
+        #prestige-btn { padding: 15px 30px; background: #d2691e; color: white; border: none; border-radius: 15px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 0 #8b4513; }
+        #prestige-btn.locked { background: #999; box-shadow: 0 4px 0 #666; cursor: not-allowed; opacity: 0.7; }
+        
+        #lap-history { display: none; flex-direction: column; align-items: center; font-size: 0.9em; margin-top: 20px; background: #fff; padding: 15px; border-radius: 10px; border: 2px dashed #deb887; width: 90%; color: #8b4513; font-weight: bold; }
+        .lap-entry { width: 100%; display: flex; justify-content: space-between; border-bottom: 1px dotted #eee; padding: 4px 0; }
+        
+        .click-amt, .bonus-text { position: absolute; font-weight: bold; pointer-events: none; animation: floatUp 0.8s ease-out forwards; z-index: 2000; text-shadow: 1px 1px 0 #fff; }
+        .bonus-text { font-size: 24px; text-shadow: 2px 2px 0 #fff; white-space: nowrap; animation: floatUp 1.2s ease-out forwards; z-index: 2000; }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-100px); } }
+    </style>
+</head>
+<body>
+<div id="flash-overlay"></div>
+<div id="notify-msg">秘伝継承完了！</div>
+<div id="game-wrapper">
+    <h1>うどんクリッカー</h1>
+    
+    <div class="timer-bar">
+        <div class="timer-row">
+            <span><span id="total-play-time-label">🕒 プレイ時間:</span> <span id="total-play-time">00:00:00</span></span>
+            <span id="current-lap-container" style="display:none;">⏳ 今回のプレイ時間: <span id="current-lap-time">00:00:00</span></span>
+        </div>
+    </div>
+    
+    <div class="stats-bar">
+        <div>自動生産: <span id="ups-display">0</span> 玉/秒</div>
+        <div>所持うどん: <span id="total-count">0</span> 玉</div>
+        <div>手動生産: <span id="upc-display">1</span> 玉/回</div>
+    </div>
+    
+    <div id="main-layout">
+        <div class="panel" id="shop-panel"><h3>🍜 うどん</h3><div id="shop-list"></div></div>
+        
+        <div id="click-panel">
+            <button id="udon-button" onmousedown="clickUdon(event)" ontouchstart="clickUdon(event)"><img src="udon.png" alt="うどん"></button>
+            
+            <div id="fever-timer">
+                うどんフィーバー!!!
+                <div style="width: 80%; height: 16px; background: rgba(255,255,255,0.6); border-radius: 10px; margin: 8px auto 0; overflow: hidden; border: 2px solid #fff; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);">
+                    <div id="fever-gauge" style="width: 100%; height: 100%; background: #ff69b4; transition: width 0.1s linear;"></div>
+                </div>
+            </div>
+            
+            <div id="mult-display-container" style="display: none; font-weight: bold; color: #d2691e; margin-top: 10px; font-size: 1.1em; background: #fff; padding: 5px 20px; border-radius: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                ✨ 秘伝倍率: x<span id="mult-display">1.00</span>
+            </div>
+            
+            <div id="prestige-container">
+                <div id="prestige-lock-msg">条件：---</div>
+                <button id="prestige-btn" onclick="executePrestige()">秘伝のつゆを継承<br><span id="prestige-info" style="font-size:11px;">(倍率 x3)</span></button>
+            </div>
+
+            <div style="font-size: 12px; color: #8b4513; margin-top: 15px; border: 2px dashed #deb887; padding: 12px; background: #fff; border-radius: 10px; width: 95%; line-height: 1.5;">
+                🥢 <b>銀の海老天うどん</b>：自動生産20秒分のうどん玉を獲得<br>
+                🦊 <b>金のきつねうどん</b>：10秒間うどん玉の生産効率が3倍
+                <div style="margin-top:10px; padding-top:8px; border-top:1px solid #eee; color:#d2691e; font-weight:bold;">📜 秘伝のつゆ：継承を行うと全てをリセットし、生産倍率が現在の3倍になります。周回ごとに新たな設備が解放されていきます。</div>
+            </div>
+            
+            <div id="lap-history"></div>
+            
+        </div>
+        <div class="panel"><h3>🍥 トッピング</h3><div id="topping-list"></div></div>
+    </div>
+</div>
+
+<div id="silver-shrimp" class="rare-item" onpointerdown="catchShrimp(event)"><img src="s_ebiten.png" style="width:100%"></div>
+<div id="golden-fox" class="rare-item" onpointerdown="catchFox(event)"><img src="g_kitune.png" style="width:100%"></div>
+
+<script>
+    let udon = 0; let totalUdonEver = 0; let baseMultiplier = 1.0; let feverMultiplier = 1.0;
+    let sessionStartTime = Date.now(); let lapStartTime = Date.now();
+    let feverTimeLeft = 0; 
+    let feverTimerId = null;
+    
+    let cumulativePastTime = parseInt(localStorage.getItem('udon_total_time_v39') || 0);
+    let prestigeCount = parseInt(localStorage.getItem('udon_prestige_v39') || 0);
+    let lapHistory = JSON.parse(localStorage.getItem('udon_lap_history_v39') || "[]");
+    let bestLap = localStorage.getItem('udon_best_lap_v39') || null;
+    let firstLap = localStorage.getItem('udon_first_lap_v39') || null;
+
+    function formatNumber(num) {
+        if (num < 1e9) return Math.floor(num).toLocaleString();
+        return num.toExponential(2);
+    }
+    function formatNumberFloat(num) {
+        if (num < 1e9) return num.toLocaleString(undefined, {maximumFractionDigits:1});
+        return num.toExponential(2);
+    }
+
+    const shopItems = [
+        { name: "袋うどん", cost: 15, baseCost: 15, power: 0.2, count: 0, scale: 1.15, unlocked: true, flavor: "スーパーで特売されている一般的なうどん。" },
+        { name: "乾燥うどん", cost: 150, baseCost: 150, power: 1.5, count: 0, scale: 1.15, unlocked: false, flavor: "日持ちする頼もしい備蓄食料。" },
+        { name: "冷凍うどん", cost: 1500, baseCost: 1500, power: 15, count: 0, scale: 1.16, unlocked: false, flavor: "レンジでチンするだけでコシのある本格派。" },
+        { name: "手打ちうどん", cost: 12000, baseCost: 12000, power: 100, count: 0, scale: 1.17, unlocked: false, flavor: "職人が足で踏み、精魂込めて打った逸品。" },
+        { name: "うどん製麺機", cost: 80000, baseCost: 80000, power: 600, count: 0, scale: 1.18, unlocked: false, flavor: "自動で均一な麺を延々と生み出す機械。" },
+        { name: "うどん屋台", cost: 500000, baseCost: 500000, power: 3500, count: 0, scale: 1.19, unlocked: false, flavor: "深夜の街に響くチャルメラ……ではなくうどん。" },
+        { name: "うどん自販機", cost: 2000000, baseCost: 2000000, power: 12000, count: 0, scale: 1.20, unlocked: false, flavor: "昭和レトロな自販機。25秒で熱々が出てくる。" },
+        { name: "うどん店舗", cost: 10000000, baseCost: 10000000, power: 50000, count: 0, scale: 1.20, unlocked: false, flavor: "ついに自分の城を持った。行列が絶えない。" },
+        { name: "うどんチェーン", cost: 60000000, baseCost: 60000000, power: 250000, count: 0, scale: 1.21, unlocked: false, flavor: "全国展開を開始。どこでも同じ味が楽しめる。" },
+        { name: "うどんセンター", cost: 400000000, baseCost: 400000000, power: 1500000, count: 0, scale: 1.22, unlocked: false, flavor: "各店舗へ麺とつゆを配送する巨大物流拠点。" },
+        { name: "うどん工場", cost: 2500000000, baseCost: 2500000000, power: 10000000, count: 0, scale: 1.25, unlocked: false, flavor: "24時間稼働でメガトン級のうどんを生産する。" },
+        { name: "うどん研究所", cost: 15000000000, baseCost: 15000000000, power: 55000000, count: 0, scale: 1.28, unlocked: false, flavor: "分子レベルで「コシ」と「のどごし」を研究。" },
+        { name: "うどんジェネレータ", cost: 80000000000, baseCost: 80000000000, power: 300000000, count: 0, scale: 1.30, unlocked: false, flavor: "無からうどんを生成する夢の装置。" },
+        { name: "うどん県", cost: 500000000000, baseCost: 500000000000, power: 1800000000, count: 0, scale: 1.33, unlocked: false, flavor: "行政のすべてがうどんを中心に回る独立自治体。" },
+        { name: "うどん王国", cost: 5e12, baseCost: 5e12, power: 1.5e10, count: 0, scale: 1.35, unlocked: false, flavor: "国王はうどん。国民の主食もうどん。" },
+        { name: "うどん大陸", cost: 5e13, baseCost: 5e13, power: 1e11, count: 0, scale: 1.37, unlocked: false, flavor: "地殻が小麦粉、海がダシで構成された新大陸。" },
+        { name: "うどん星", cost: 5e14, baseCost: 5e14, power: 1e12, count: 0, scale: 1.39, unlocked: false, flavor: "宇宙から見ると白く輝く、うどんに覆われた惑星。" },
+        { name: "うどんメタバース", cost: 1e16, baseCost: 1e16, power: 1e13, count: 0, scale: 1.41, unlocked: false, flavor: "仮想空間で全人類が永遠にうどんをすする世界。" },
+        { name: "うどん錬金術", cost: 2e17, baseCost: 2e17, power: 1e14, count: 0, scale: 1.43, unlocked: false, flavor: "卑金属を黄金のうどんに変成する禁忌の秘術。" },
+        { name: "うどん銀河", cost: 5e18, baseCost: 5e18, power: 1.5e15, count: 0, scale: 1.45, unlocked: false, flavor: "星々がうどんの渦となって輝く巨大な銀河系。" },
+        { name: "うどん軌道エレベータ", cost: 1e20, baseCost: 1e20, power: 1e16, count: 0, scale: 1.48, unlocked: false, flavor: "宇宙空間へ出来立てのうどんを輸送する建造物。" },
+        { name: "うどん特異点", cost: 2e21, baseCost: 2e21, power: 1.5e17, count: 0, scale: 1.51, unlocked: false, flavor: "うどんの密度が無限大に達し、物理法則が崩壊する。" },
+        { name: "うどんブラックホール", cost: 5e22, baseCost: 5e22, power: 2e18, count: 0, scale: 1.54, unlocked: false, flavor: "事象の地平面を超え、すべてをうどんに変える天体。" },
+        { name: "うどんビッグバン", cost: 1e24, baseCost: 1e24, power: 2e19, count: 0, scale: 1.57, unlocked: false, flavor: "超高熱のうどんスープが爆発し、新たな宇宙が誕生する。" },
+        { name: "うどんマルチバース", cost: 2e25, baseCost: 2e25, power: 2.5e20, count: 0, scale: 1.60, unlocked: false, flavor: "無数に分岐する並行宇宙を、うどんの概念が埋め尽くす。" }, 
+        { name: "うどんという概念", cost: 5e26, baseCost: 5e26, power: 3e21, count: 0, scale: 1.65, unlocked: false, flavor: "在りて在るもの。すべてはうどんであり、うどんはすべてである。" }
+    ];
+
+    const toppings = [
+        { name: "磯香るわかめ", cost: 25, baseCost: 25, level: 0, val: 1, desc: "1手動生産につき +1 玉", scale: 1.6, flavor: "海のミネラルがうどんの旨味を引き立てる。" },
+        { name: "とろける温泉玉子", cost: 3000, baseCost: 3000, level: 0, val: 0.01, desc: "自動生産の1%を手動生産に加算", scale: 2.8, flavor: "麺に絡みつく濃厚な黄身のまろやかさ。" },
+        { name: "搾りたての生醤油", cost: 800, baseCost: 800, level: 0, val: 1.0, desc: "「〜うどん」設備の生産効率を +100% 強化", scale: 2.0, flavor: "うどんのポテンシャルを極限まで引き出す魔法の一滴。" },
+        { name: "ピリ辛大根おろし", cost: 2500, baseCost: 2500, level: 0, val: 0.1, desc: "全自動生産効率を +10% 強化", scale: 2.5, flavor: "さっぱりとした辛味が食欲を無限に増進させる。" },
+        { name: "特選とろろ昆布", cost: 12000, baseCost: 12000, level: 0, val: 0.05, desc: "レアうどんの出現率を +5% 向上", scale: 3.2, flavor: "つゆに溶け込み、幻のうどんを引き寄せる。" }
+    ];
+
+    function getMaxItemIndex() {
+        if (prestigeCount === 0) return 13; 
+        if (prestigeCount === 1) return 16; 
+        if (prestigeCount === 2) return 19; 
+        if (prestigeCount === 3) return 22; 
+        return shopItems.length - 1;        
+    }
+
+    function formatTime(ms) { if (!ms || ms < 0) return "--:--:--"; let s = Math.floor(ms / 1000); let m = Math.floor(s / 60); let h = Math.floor(m / 60); return [h, m % 60, s % 60].map(v => v.toString().padStart(2, '0')).join(':'); }
+    
+    function init() { 
+        if (localStorage.getItem('udon_mult_v39')) { baseMultiplier = parseFloat(localStorage.getItem('udon_mult_v39')); } 
+        const sList = document.getElementById("shop-list"); 
+        let maxIndex = getMaxItemIndex();
+        
+        shopItems.forEach((it, i) => { 
+            const div = document.createElement("div"); 
+            div.id = `shop-${i}`; 
+            div.className = "list-item disabled"; 
+            if (i > maxIndex) it.unlocked = false; 
+            div.style.display = it.unlocked ? "flex" : "none"; 
+            div.onclick = () => buyShopItem(i); 
+            sList.appendChild(div); 
+        }); 
+        
+        const tList = document.getElementById("topping-list"); 
+        toppings.forEach((tp, i) => { 
+            if (i === 2 || i === 4) {
+                const hr = document.createElement("hr");
+                hr.className = "divider";
+                tList.appendChild(hr);
+            }
+            const div = document.createElement("div"); 
+            div.id = `top-${i}`; 
+            div.className = "list-item disabled"; 
+            div.onclick = () => buyTopping(i); 
+            tList.appendChild(div); 
+        }); 
+        updateStaticUI(); 
+    }
+
+    function getAutoPower() { 
+        let rawPwr = 0; 
+        for(let [i, it] of shopItems.entries()) {
+            let itemPwr = it.power;
+            if (i <= 3) itemPwr *= (1 + (toppings[2].level * toppings[2].val));
+            rawPwr += it.count * itemPwr; 
+        }
+        return rawPwr * (1 + (toppings[3].level * toppings[3].val)) * baseMultiplier * feverMultiplier; 
+    }
+    
+    function getClickPower() { 
+        let base = (1 + (toppings[0].level * toppings[0].val)); 
+        let synergy = getAutoPower() * (toppings[1].level * toppings[1].val); 
+        return (base + synergy) * baseMultiplier * feverMultiplier; 
+    }
+
+    function clickUdon(e) { 
+        if(e && typeof e.preventDefault === 'function') e.preventDefault();
+        
+        const udonImg = document.querySelector('#udon-button img');
+        udonImg.style.transform = 'scale(0.9)';
+        setTimeout(() => { udonImg.style.transform = 'scale(1)'; }, 100);
+
+        const gain = getClickPower(); 
+        udon += gain; 
+        totalUdonEver += gain; 
+        
+        const float = document.createElement("div"); 
+        float.className = "click-amt"; 
+        float.innerText = "+" + formatNumberFloat(gain); 
+        
+        let x = window.innerWidth / 2;
+        let y = window.innerHeight / 2;
+        if(e) {
+            if(e.clientX !== undefined) { x = e.clientX + window.scrollX; y = e.clientY + window.scrollY; }
+            else if(e.touches && e.touches.length > 0) { x = e.touches[0].clientX + window.scrollX; y = e.touches[0].clientY + window.scrollY; }
+        }
+        
+        float.style.left = (x - 20) + "px"; 
+        float.style.top = (y - 40) + "px"; 
+        document.body.appendChild(float); 
+        setTimeout(() => float.remove(), 800); 
+    }
+    
+    function updateStaticUI() { 
+        const isPro = baseMultiplier > 1.0;
+        document.getElementById("mult-display-container").style.display = isPro ? "block" : "none"; 
+        
+        if (prestigeCount > 0) {
+            document.getElementById("total-play-time-label").innerText = "🕒 合計プレイ時間:";
+            document.getElementById("current-lap-container").style.display = "inline";
+        } else {
+            document.getElementById("total-play-time-label").innerText = "🕒 プレイ時間:";
+            document.getElementById("current-lap-container").style.display = "none";
+        }
+
+        const historyContainer = document.getElementById("lap-history");
+        if (lapHistory.length > 0) {
+            historyContainer.style.display = "flex";
+            let html = "<div style='font-size:14px; margin-bottom:8px; border-bottom:1px solid #deb887; padding-bottom:4px;'>🏁 秘伝継承</div>";
+            lapHistory.forEach((time, index) => {
+                html += `<div class="lap-entry"><span>${index + 1}周目</span><span>${formatTime(time)}</span></div>`;
+            });
+            historyContainer.innerHTML = html;
+        } else {
+            historyContainer.style.display = "none";
+        }
+    }
+    
+    function fastTick() { 
+        const now = Date.now(); 
+        document.getElementById("total-play-time").innerText = formatTime(now - sessionStartTime + cumulativePastTime); 
+        document.getElementById("current-lap-time").innerText = formatTime(now - lapStartTime); 
+        document.getElementById("total-count").innerText = formatNumber(udon); 
+        
+        const currentUps = getAutoPower(); 
+        document.getElementById("ups-display").innerText = formatNumberFloat(currentUps); 
+        document.getElementById("upc-display").innerText = formatNumberFloat(getClickPower()); 
+        document.getElementById("mult-display").innerText = formatNumberFloat(baseMultiplier); 
+
+        if (feverTimeLeft > 0) {
+            feverTimeLeft -= 0.1;
+            let percentage = (feverTimeLeft / 10.0) * 100;
+            document.getElementById("fever-gauge").style.width = percentage + "%";
+            
+            if (feverTimeLeft <= 0) {
+                feverTimeLeft = 0;
+                feverMultiplier = 1.0;
+                document.body.classList.remove("fever-mode");
+                document.getElementById("fever-timer").style.display = "none";
+            }
+        }
+
+        let currentTargetIndex = 13; 
+        if(prestigeCount === 1) currentTargetIndex = 16; 
+        if(prestigeCount === 2) currentTargetIndex = 19; 
+        if(prestigeCount === 3) currentTargetIndex = 22; 
+        if(prestigeCount >= 4) currentTargetIndex = 25;  
+
+        let canPrestige = shopItems[currentTargetIndex].count >= 1;
+        let reqMsg = `条件：${shopItems[currentTargetIndex].name} Lv.1以上`;
+
+        const pContainer = document.getElementById("prestige-container");
+        
+        if (shopItems[currentTargetIndex].unlocked) {
+            pContainer.style.display = "flex";
+            const pBtn = document.getElementById("prestige-btn");
+            const pLockMsg = document.getElementById("prestige-lock-msg");
+            
+            if (canPrestige) {
+                pBtn.classList.remove("locked");
+                pLockMsg.style.display = "none";
+            } else {
+                pBtn.classList.add("locked");
+                pLockMsg.style.display = "block";
+                pLockMsg.innerText = reqMsg;
+            }
+        } else { 
+            pContainer.style.display = "none"; 
+        }
+    }
+
+    function slowTick() { 
+        let maxIndex = getMaxItemIndex();
+        let newUnlock = false;
+
+        shopItems.forEach((it, i) => { 
+            const el = document.getElementById(`shop-${i}`); 
+            if (!it.unlocked && udon >= it.cost && i <= maxIndex) { 
+                it.unlocked = true; 
+                newUnlock = true;
+            } 
+            
+            if (i > maxIndex) {
+                el.style.display = "none";
+                it.unlocked = false;
+            } else if (it.unlocked) {
+                el.style.display = "flex";
+            } else {
+                el.style.display = "none";
+            }
+
+            if (it.unlocked) {
+                let itemPwr = it.power;
+                if (i <= 3) itemPwr *= (1 + (toppings[2].level * toppings[2].val));
+                let contrib = it.count * itemPwr * (1 + (toppings[3].level * toppings[3].val)) * baseMultiplier * feverMultiplier; 
+                el.innerHTML = `<div class="item-info"><span class="item-name">${it.name} [Lv.${it.count}]</span><span class="item-desc">基礎: +${formatNumberFloat(it.power)}</span><span class="item-total">貢献: +${formatNumberFloat(contrib)}/s</span></div><span class="item-cost">${formatNumber(it.cost)} 玉</span><span class="item-flavor">"${it.flavor}"</span>`; 
+                el.classList.toggle("disabled", udon < it.cost); 
+            }
+        }); 
+        
+        if (newUnlock) {
+            const panel = document.getElementById("shop-panel");
+            panel.scrollTo({ top: panel.scrollHeight, behavior: 'smooth' });
+        }
+
+        toppings.forEach((tp, i) => { 
+            const el = document.getElementById(`top-${i}`); 
+            let status = (i === 0) ? `+${formatNumber(tp.level * tp.val)} 玉` : `+${formatNumber(tp.level * tp.val * 100)}%`; 
+            el.innerHTML = `<div class="item-info"><span class="item-name">${tp.name} [Lv.${tp.level}]</span><span class="item-desc">${tp.desc}</span><span class="item-total">状況: ${status}</span></div><span class="item-cost">${formatNumber(tp.cost)} 玉</span><span class="item-flavor">"${tp.flavor}"</span>`; 
+            el.classList.toggle("disabled", udon < tp.cost); 
+        }); 
+        localStorage.setItem('udon_total_time_v39', Date.now() - sessionStartTime + cumulativePastTime); 
+    }
+
+    function buyShopItem(i) { if (udon >= shopItems[i].cost) { udon -= shopItems[i].cost; shopItems[i].count++; shopItems[i].cost *= shopItems[i].scale; fastTick(); } }
+    function buyTopping(i) { if (udon >= toppings[i].cost) { udon -= toppings[i].cost; toppings[i].level++; toppings[i].cost *= toppings[i].scale; fastTick(); } }
+    
+    function executePrestige() {
+        let currentTargetIndex = 13; 
+        if(prestigeCount === 1) currentTargetIndex = 16; 
+        if(prestigeCount === 2) currentTargetIndex = 19; 
+        if(prestigeCount === 3) currentTargetIndex = 22; 
+        if(prestigeCount >= 4) currentTargetIndex = 25;  
+
+        if (shopItems[currentTargetIndex].count < 1) return;
+
+        const lapTime = Date.now() - lapStartTime; 
+        lapHistory.push(lapTime);
+        localStorage.setItem('udon_lap_history_v39', JSON.stringify(lapHistory));
+        
+        if (baseMultiplier === 1.0 && prestigeCount === 0) {
+            baseMultiplier = 3.0;
+        } else {
+            baseMultiplier *= 3; 
+        }
+        prestigeCount++;
+
+        localStorage.setItem('udon_mult_v39', baseMultiplier);
+        localStorage.setItem('udon_prestige_v39', prestigeCount);
+
+        udon = 0; 
+        totalUdonEver = 0; 
+        let maxIndex = getMaxItemIndex();
+        shopItems.forEach((it, i) => { 
+            it.count = 0; 
+            it.unlocked = (i === 0); 
+            it.cost = it.baseCost;
+            const el = document.getElementById(`shop-${i}`); 
+            if (el) el.style.display = it.unlocked && i <= maxIndex ? "flex" : "none";
+        }); 
+        toppings.forEach(tp => { tp.level = 0; tp.cost = tp.baseCost; });
+        lapStartTime = Date.now(); 
+        
+        feverTimeLeft = 0;
+        feverMultiplier = 1.0;
+        document.body.classList.remove("fever-mode");
+        document.getElementById("fever-timer").style.display = "none";
+
+        const notify = document.getElementById("notify-msg");
+        notify.innerText = `周回完了！生産倍率が ${formatNumberFloat(baseMultiplier)} 倍になりました！`;
+        notify.style.display = "block"; notify.style.animation = "fadeOutMsg 2.5s forwards";
+        setTimeout(() => { notify.style.display = "none"; notify.style.animation = ""; }, 2500);
+
+        updateStaticUI(); fastTick(); slowTick();
+    }
+
+    let activeItem = null;
+    function showRareItem(id) { 
+        if (activeItem) return; 
+        const el = document.getElementById(id); 
+        const startX = Math.random() * 80 + 10; 
+        let pos = -150; 
+        el.style.left = startX + "vw"; 
+        el.style.display = "block"; 
+        activeItem = setInterval(() => { 
+            pos += 2.5; 
+            el.style.transform = `translate3d(0, ${-pos}px, 0)`; 
+            if (pos > window.innerHeight + 300) { hideRare(); } 
+        }, 16); 
+    }
+    
+    function hideRare() { 
+        clearInterval(activeItem); 
+        activeItem = null; 
+        document.getElementById("silver-shrimp").style.display = "none"; 
+        document.getElementById("golden-fox").style.display = "none"; 
+    }
+    
+    function showBonusEffectFixed(x, y, text, color) { 
+        const float = document.createElement("div"); 
+        float.className = "bonus-text"; 
+        float.style.color = color; 
+        float.innerHTML = text; // 改行を反映させるためinnerHTMLに変更
+        float.style.textAlign = "center";
+        float.style.left = (x - 80) + "px"; 
+        float.style.top = (y - 20) + "px"; 
+        document.body.appendChild(float); 
+        setTimeout(() => float.remove(), 1200); 
+    }
+
+    function catchShrimp(e) { 
+        if(e && typeof e.preventDefault === 'function') e.preventDefault();
+        if (!activeItem) return; 
+        hideRare(); 
+
+        const flash = document.getElementById("flash-overlay"); 
+        flash.classList.remove("do-flash"); 
+        void flash.offsetWidth; 
+        flash.classList.add("do-flash"); 
+        
+        const bonus = Math.floor(getAutoPower() * 20) + 100; 
+        udon += bonus; 
+        totalUdonEver += bonus; 
+        
+        let x = window.innerWidth / 2;
+        let y = window.innerHeight / 2;
+        if(e) {
+            if(e.clientX !== undefined) { x = e.clientX; y = e.clientY; }
+            else if(e.touches && e.touches.length > 0) { x = e.touches[0].clientX; y = e.touches[0].clientY; }
+        }
+        
+        showBonusEffectFixed(x, y, "海老天ボーナス！<br>+" + formatNumber(bonus), "#d2691e"); 
+        fastTick(); 
+    }
+    
+    function catchFox(e) { 
+        if(e && typeof e.preventDefault === 'function') e.preventDefault();
+        if (!activeItem) return; 
+        hideRare(); 
+
+        feverMultiplier = 3.0; 
+        feverTimeLeft = 10.0; 
+        document.body.classList.add("fever-mode"); 
+        document.getElementById("fever-timer").style.display = "block"; 
+        
+        let x = window.innerWidth / 2;
+        let y = window.innerHeight / 2;
+        if(e) {
+            if(e.clientX !== undefined) { x = e.clientX; y = e.clientY; }
+            else if(e.touches && e.touches.length > 0) { x = e.touches[0].clientX; y = e.touches[0].clientY; }
+        }
+        
+        showBonusEffectFixed(x, y, "きつねボーナス！ x3", "#ffd700"); 
+        fastTick(); 
+    }
+    
+    setInterval(() => { let chance = 0.3 + (toppings[4].level * toppings[4].val); if (Math.random() < chance) showRareItem(Math.random() < 0.6 ? "silver-shrimp" : "golden-fox"); }, 12000);
+    setInterval(() => { udon += getAutoPower() / 10; fastTick(); }, 100);
+    setInterval(slowTick, 500); init();
+</script>
+</body>
+</html>
