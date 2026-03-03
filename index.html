@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>うどんクリッカー</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800;900&family=Zen+Maru+Gothic:wght@400;500;700;900&display=swap"
+        rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Zen Maru Gothic', 'M PLUS Rounded 1c', sans-serif;
+            text-align: center;
+            background: radial-gradient(circle at top left, #fff0db, #fdf5e6);
+            margin: 0;
+            overflow-x: hidden;
+            color: #4a3b32;
+            user-select: none;
+            min-height: 100vh;
+        }
+
+        .rare-item {
+            position: fixed;
+            width: 110px;
+            cursor: pointer;
+            z-index: 50;
+            display: none;
+            will-change: transform;
+            transform: translateZ(0);
+            touch-action: none;
+            filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.3));
+            transition: filter 0.2s;
+        }
+
+        .rare-item:hover {
+            filter: drop-shadow(0 8px 25px rgba(255, 215, 0, 0.6)) brightness(1.2);
+        }
+
+        @keyframes rainbowText {
+            0% {
+                color: #ff3333;
+                text-shadow: 0 0 10px rgba(255, 51, 51, 0.5);
+            }
+
+            33% {
+                color: #33ff33;
+                text-shadow: 0 0 10px rgba(51, 255, 51, 0.5);
+            }
+
+            66% {
+                color: #3333ff;
+                text-shadow: 0 0 10px rgba(51, 51, 255, 0.5);
+            }
+
+            100% {
+                color: #ff3333;
+                text-shadow: 0 0 10px rgba(255, 51, 51, 0.5);
+            }
+        }
+
+        @keyframes rainbowBackground {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        .fever-mode {
+            background: linear-gradient(270deg, #ffb3b3, #ffe6b3, #ffffb3, #b3ffb3, #b3e6ff, #b3b3ff, #e6b3ff);
+            background-size: 400% 400%;
+            animation: rainbowBackground 6s ease infinite;
+        }
+
+        @keyframes feverTextScale {
+            0% {
+                transform: scale(1) rotate(-2deg);
+                filter: drop-shadow(0 0 10px #ff99cc) drop-shadow(0 0 20px #ff69b4);
+            }
+
+            50% {
+                transform: scale(1.08) rotate(3deg);
+                filter: drop-shadow(0 0 20px #ff69b4) drop-shadow(0 0 40px #ff3399);
+            }
+
+            100% {
+                transform: scale(1) rotate(-2deg);
+                filter: drop-shadow(0 0 10px #ff99cc) drop-shadow(0 0 20px #ff69b4);
+            }
+        }
+
+        @keyframes stripeMove {
+            0% {
+                background-position: 0 0;
+            }
+
+            100% {
+                background-position: 42px 0;
+            }
+        }
+
+        #fever-timer {
+            display: none;
+            margin: 25px auto 20px auto;
+            text-align: center;
+        }
+
+        .fever-title {
+            font-size: 1.8rem;
+            white-space: nowrap;
+            font-weight: 900;
+            color: #fff;
+            margin-bottom: 12px;
+            letter-spacing: 1px;
+            text-shadow:
+                -2px -2px 0 #ff69b4,
+                2px -2px 0 #ff69b4,
+                -2px 2px 0 #ff69b4,
+                2px 2px 0 #ff69b4,
+                0 4px 0 #d1478e;
+            animation: feverTextScale 0.5s ease-in-out infinite;
+        }
+
+        .fever-bar-wrap {
+            width: 85%;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 12px;
+            margin: 0 auto;
+            border: 3px solid #fff;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2), 0 0 15px rgba(255, 105, 180, 0.6);
+            overflow: hidden;
+            position: relative;
+        }
+
+        #fever-gauge {
+            height: 100%;
+            width: 100%;
+            background: repeating-linear-gradient(45deg,
+                    #ff1493,
+                    #ff1493 15px,
+                    #ff69b4 15px,
+                    #ff69b4 30px);
+            background-size: 42px 42px;
+            animation: stripeMove 0.8s linear infinite;
+            transition: width 0.1s linear;
+            border-radius: 8px;
+        }
+
+        #flash-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        @keyframes flashAnim {
+            0% {
+                opacity: 0.8;
+            }
+
+            100% {
+                opacity: 0;
+            }
+        }
+
+        .do-flash {
+            animation: flashAnim 0.5s ease-out forwards;
+        }
+
+        #notify-msg {
+            position: fixed;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(139, 69, 19, 0.9);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 50px;
+            font-weight: bold;
+            z-index: 2000;
+            display: none;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        @keyframes fadeOutMsg {
+            0% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -100%) scale(1.1);
+            }
+        }
+
+        #game-wrapper {
+            width: 98%;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 10px;
+        }
+
+        #main-layout {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 8px 25px rgba(139, 69, 19, 0.08);
+            border: 2px solid #fff;
+            flex: 1;
+            min-width: 280px;
+            max-width: 320px;
+            max-height: 70vh;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #d2691e #fdf5e6;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .panel:hover {
+            box-shadow: 0 12px 30px rgba(139, 69, 19, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .panel::-webkit-scrollbar-track {
+            background: #fdf5e6;
+            border-radius: 10px;
+        }
+
+        .panel::-webkit-scrollbar-thumb {
+            background-color: #d2691e;
+            border-radius: 10px;
+        }
+
+        #click-panel {
+            flex: 1.4;
+            min-width: 320px;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: none;
+            box-shadow: none;
+            max-height: none;
+        }
+
+        @keyframes udonFloat {
+            0% {
+                transform: translateY(0) scale(1);
+            }
+
+            50% {
+                transform: translateY(-8px) scale(1.02);
+            }
+
+            100% {
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        #udon-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            width: 280px;
+            margin: 15px 0;
+            outline: none;
+            touch-action: manipulation;
+        }
+
+        #udon-button img {
+            width: 100%;
+            height: auto;
+            border-radius: 40px;
+            filter: drop-shadow(0 15px 25px rgba(0, 0, 0, 0.15));
+            pointer-events: none;
+            transition: transform 0.1s cubic-bezier(0.2, 2.5, 0.4, 1);
+            animation: udonFloat 3s ease-in-out infinite;
+        }
+
+        .stats-bar {
+            background: linear-gradient(135deg, #8b4513, #5d2e0a);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: stretch;
+            font-weight: 900;
+            box-shadow: 0 4px 10px rgba(139, 69, 19, 0.3);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+            letter-spacing: 0px;
+        }
+
+        #changelog-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 250px;
+            max-height: 200px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid #deb887;
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 4px 15px rgba(139, 69, 19, 0.15);
+            overflow-y: auto;
+            font-size: 11px;
+            text-align: left;
+            z-index: 100;
+        }
+
+        #changelog-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #changelog-panel::-webkit-scrollbar-track {
+            background: #fdf5e6;
+            border-radius: 6px;
+        }
+
+        #changelog-panel::-webkit-scrollbar-thumb {
+            background-color: #d2691e;
+            border-radius: 6px;
+        }
+
+        .changelog-ver {
+            font-weight: bold;
+            color: #d2691e;
+            margin-top: 8px;
+            margin-bottom: 4px;
+            border-bottom: 1px dashed #d2691e;
+            padding-bottom: 2px;
+        }
+
+        .changelog-ver:first-child {
+            margin-top: 0;
+        }
+
+        .changelog-list {
+            margin: 0;
+            padding-left: 15px;
+            color: #5d2e0a;
+            line-height: 1.4;
+        }
+
+        .changelog-list li {
+            margin-bottom: 3px;
+        }
+
+        @media (max-width: 800px) {
+            #main-layout {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .panel {
+                width: 95%;
+                max-width: 400px;
+                margin-bottom: 15px;
+            }
+
+            #click-panel {
+                width: 95%;
+                max-width: 400px;
+            }
+
+            #udon-button {
+                width: 250px;
+            }
+
+            #notify-msg {
+                font-size: 14px;
+                padding: 15px 30px;
+            }
+
+            #prestige-container {
+                width: 95%;
+            }
+
+            #changelog-panel {
+                position: static;
+                /* Make it static on small screens */
+                width: 95%;
+                max-width: 400px;
+                margin: 15px auto;
+                max-height: 150px;
+            }
+        }
+
+        .timer-bar {
+            background: linear-gradient(135deg, #fcebcf, #e8c69b);
+            color: #5d2e0a;
+            padding: 12px 20px;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            font-weight: 900;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            text-shadow: 0px 1px 0px rgba(255, 255, 255, 0.8);
+        }
+
+        .timer-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+        }
+
+        .list-item {
+            background: #fff;
+            border: 2px solid #edc295;
+            padding: 6px 10px;
+            margin: 4px 0;
+            cursor: pointer;
+            border-radius: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            text-align: left;
+            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+            position: relative;
+            overflow: hidden;
+            line-height: 1.2;
+        }
+
+        .list-item:not(.disabled):hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 15px rgba(210, 105, 30, 0.15);
+            border-color: #d2691e;
+        }
+
+        .list-item:not(.disabled):active {
+            transform: translateY(0px);
+            box-shadow: 0 2px 5px rgba(210, 105, 30, 0.1);
+        }
+
+        .disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #f9f9f9 !important;
+            border-color: #ddd;
+            box-shadow: none;
+            filter: grayscale(30%);
+        }
+
+        .divider {
+            border: none;
+            border-top: 4px double #deb887;
+            margin: 15px 0;
+            width: 100%;
+        }
+
+        .item-info {
+            flex: 1;
+            pointer-events: none;
+            min-width: 0;
+        }
+
+        .item-name {
+            font-weight: 900;
+            display: block;
+            color: #5d2e0a;
+            font-size: 13.5px;
+            margin-bottom: 2px;
+            letter-spacing: -0.5px;
+            white-space: nowrap;
+        }
+
+        .item-desc {
+            font-size: 11.5px;
+            color: #8b4513;
+            display: inline-block;
+            opacity: 0.9;
+            margin-bottom: 0px;
+            line-height: 1.2;
+        }
+
+        .item-total {
+            font-size: 11.5px;
+            color: #d2691e;
+            font-weight: bold;
+            display: inline-block;
+        }
+
+        .item-cost {
+            font-weight: 900;
+            color: #d2691e;
+            margin-left: 5px;
+            min-width: 65px;
+            text-align: right;
+            border-left: 1px solid #eee;
+            padding-left: 5px;
+            font-size: 13.5px;
+            text-shadow: 0px 1px 0px rgba(255, 255, 255, 0.8);
+            white-space: nowrap;
+        }
+
+        .item-flavor {
+            font-size: 10px;
+            color: #a0522d;
+            display: block;
+            width: 100%;
+            margin-top: 4px;
+            padding-top: 2px;
+            border-top: 1px dashed #eee;
+            opacity: 0.8;
+            pointer-events: none;
+            line-height: 1.2;
+            white-space: nowrap;
+            letter-spacing: -0.5px;
+        }
+
+        #prestige-container {
+            margin-top: 15px;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        #prestige-lock-msg {
+            color: #d21e1e;
+            font-weight: bold;
+            font-size: 14px;
+            background: #fff;
+            border: 2px solid #d21e1e;
+            padding: 8px 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        #prestige-btn {
+            padding: 15px 30px;
+            background: #d2691e;
+            color: white;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 0 #8b4513;
+        }
+
+        #prestige-btn.locked {
+            background: #999;
+            box-shadow: 0 4px 0 #666;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        #lap-history {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.9em;
+            margin-top: 20px;
+            background: #fff;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px dashed #deb887;
+            width: 90%;
+            color: #8b4513;
+            font-weight: bold;
+        }
+
+        .lap-entry {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px dotted #eee;
+            padding: 4px 0;
+        }
+
+        @keyframes floatUpFade {
+            0% {
+                opacity: 1;
+                transform: translate(var(--dx, 0px), 0) scale(1.1);
+            }
+
+            20% {
+                opacity: 1;
+                transform: translate(calc(var(--dx, 0px) * 0.5), -20px) scale(1.3);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translate(var(--dx, 0px), -80px) scale(0.9);
+            }
+        }
+
+        .click-amt,
+        .bonus-text {
+            position: absolute;
+            font-weight: 900;
+            pointer-events: none;
+            z-index: 2000;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.15), 0px 0px 3px #fff, 0px 0px 3px #fff;
+            animation: floatUpFade 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+            font-size: 17px;
+            color: #d2691e;
+        }
+
+        .bonus-text {
+            font-size: 28px;
+            animation-duration: 1.5s;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="flash-overlay"></div>
+    <div id="notify-msg">秘伝継承完了！</div>
+    <div id="game-wrapper">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h1 style="margin:0; padding:0; display:flex; align-items:center; position:relative;">
+                <img src="Gemini_Generated_Image_v6n1t0v6n1t0v6n1.png" alt="うどんクリッカー"
+                    style="width: 380px; height: 110px; object-fit: cover; object-position: center; mix-blend-mode: multiply; filter: contrast(1.8) brightness(1.2); margin-left: -20px;">
+                <span
+                    style="position:absolute; bottom:5px; right:20px; font-family:'Comic Sans MS', 'Chalkboard SE', sans-serif; font-size:12px; font-weight:bold; color:#a0522d; letter-spacing:1px; text-shadow:1px 1px 0px #fff, -1px -1px 0px #fff, 1px -1px 0px #fff, -1px 1px 0px #fff;">Ver.1.2.0</span>
+            </h1>
+            <div style="display:flex; align-items:flex-end;">
+                <button id="hard-reset-btn" onclick="confirmHardReset()"
+                    style="background:#d21e1e; color:white; border:none; padding:8px 12px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:12px;">データ初期化</button>
+            </div>
+        </div>
+
+        <div class="timer-bar">
+            <div class="timer-row">
+                <span><span id="total-play-time-label">🕒 起動時間:</span> <span id="total-play-time">00:00:00</span></span>
+                <span id="current-lap-container" style="display:inline;">⏳ <span id="current-lap-label">プレイ時間:</span>
+                    <span id="current-lap-time">00:00:00</span></span>
+            </div>
+        </div>
+
+        <div class="stats-bar">
+            <div
+                style="display:flex; flex-direction:column; justify-content:center; flex:1; align-items:flex-start; font-size:13.5px; line-height:1.5;">
+                <div>手動生産: <span id="upc-display">1</span> 玉/回</div>
+                <div>自動生産: <span id="ups-display">0</span> 玉/秒</div>
+            </div>
+            <div style="display:flex; flex-direction:column; justify-content:center; flex:1; align-items:center;">
+                <div style="font-size:12px; opacity:0.9; margin-bottom:2px;">所持うどん</div>
+                <div style="font-size:22px; line-height:1;"><span id="total-count">0</span> 玉</div>
+            </div>
+            <div
+                style="display:flex; flex-direction:column; justify-content:center; flex:1; align-items:flex-end; font-size:13.5px; line-height:1.5;">
+                <div>手動生産回数: <span id="manual-click-display">0</span> 回</div>
+                <div>レアうどん出現率: <span id="rare-rate-display">0.0</span>%</div>
+            </div>
+        </div>
+
+        <div id="main-layout">
+            <div class="panel" id="shop-panel">
+                <h3>🍜 うどん</h3>
+                <div id="shop-list"></div>
+            </div>
+
+            <div id="click-panel">
+                <button id="udon-button" onmousedown="clickUdon(event)" ontouchstart="clickUdon(event)"><img
+                        src="udon.png" alt="うどん"></button>
+
+                <div id="fever-timer">
+                    <div class="fever-title">うどんフィーバー!!!</div>
+                    <div class="fever-bar-wrap">
+                        <div id="fever-gauge"></div>
+                    </div>
+                </div>
+
+                <div id="mult-display-container"
+                    style="display: none; font-weight: bold; color: #d2691e; margin-top: 10px; font-size: 1.1em; background: #fff; padding: 5px 20px; border-radius: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                    ✨ 秘伝倍率: x<span id="mult-display">1.00</span>
+                </div>
+
+                <div id="prestige-container">
+                    <div id="prestige-lock-msg">条件：---</div>
+                    <button id="prestige-btn" onclick="executePrestige()">秘伝のつゆを継承<br><span id="prestige-info"
+                            style="font-size:11px;">(倍率 x3)</span></button>
+                </div>
+
+                <div
+                    style="font-size: 11px; color: #8b4513; margin-top: 15px; border: 2px dashed #deb887; padding: 12px; background: #fff; border-radius: 10px; width: 95%; line-height: 1.3;">
+                    <span style="font-weight:bold; color:#d2691e; display:block; margin-bottom:4px;">🌟 レアうどん</span>
+                    🥢 <b>銀の海老天うどん</b>：自動生産20秒分のうどん玉を獲得<br>
+                    🦊 <b>金のきつねうどん</b>：10秒間うどん玉の生産効率が3倍
+                    <div style="margin-top:8px; padding-top:6px; border-top:1px solid #eee; color:#d2691e;">
+                        <span style="font-weight:bold;">📜 秘伝のつゆ</span><br>
+                        <span
+                            style="display:inline-block; font-size:10.5px; letter-spacing:-0.4px; white-space:nowrap;">継承するとリセット後、全生産効率が現在の3倍になります。</span><br>
+                        <span id="prestige-unlock-text"
+                            style="display:inline-block; font-size:10.5px; letter-spacing:-0.4px; white-space:nowrap;">周回ごとに新たなうどん設備が解放されていきます。</span>
+                    </div>
+                </div>
+
+                <div id="lap-history"></div>
+
+            </div>
+            <div class="panel">
+                <h3>🍥 トッピング</h3>
+                <h4
+                    style="color:#d2691e; border-bottom:1px solid #eee; margin:15px 0 5px; font-size:14px; text-align:left;">
+                    手動生産</h4>
+                <div id="topping-list-manual"></div>
+
+                <h4
+                    style="color:#d2691e; border-bottom:1px solid #eee; margin:15px 0 5px; font-size:14px; text-align:left;">
+                    自動生産</h4>
+                <div id="topping-list-auto"></div>
+
+                <h4
+                    style="color:#d2691e; border-bottom:1px solid #eee; margin:15px 0 5px; font-size:14px; text-align:left;">
+                    その他</h4>
+                <div id="topping-list-other"></div>
+            </div>
+        </div>
+
+        <div id="changelog-panel">
+            <div class="changelog-ver">Ver.1.2.0 <span
+                    style="font-size:11px; font-weight:normal; color:#888; margin-left:6px;">(2026/03/03)</span></div>
+            <ul class="changelog-list">
+                <li>天かす・九条ネギ・牛すじのコストと効果を再調整</li>
+                <li>各設備・トッピングの「累計投資玉数」を表示する機能を追加</li>
+                <li>秘伝継承の履歴に達成日時とリーダー線を追加、等幅フォント化</li>
+            </ul>
+            <div class="changelog-ver" style="display:flex; align-items:center;">
+                Ver.1.1.0
+                <a href="ver110.html"
+                    style="font-size:11px; background:#f0e6d2; color:#5a3b22; padding:2px 8px; border-radius:12px; text-decoration:none; margin-left:8px; border:1px solid #dcb589; transition:background 0.2s;"
+                    onmouseover="this.style.background='#e3d4ba'" onmouseout="this.style.background='#f0e6d2'">▶
+                    旧版で遊ぶ</a>
+                <span style="font-size:11px; font-weight:normal; color:#888; margin-left:auto;">(2026/03/03)</span>
+            </div>
+            <ul class="changelog-list">
+                <li>新トッピング「じっくり煮込んだ牛すじ」追加</li>
+                <li>一部の手動強化トッピングの効果・対象を変更</li>
+                <li>トッピング全体の名称を変更</li>
+                <li>トッピングのバランス・コスト再調整</li>
+                <li>レアうどん出現仕様の変更（基礎0%化）</li>
+                <li>進行状況のオートセーブ機能を追加</li>
+                <li>プレイデータを初期化する機能を追加</li>
+                <li>うどんクリッカー全体のデザイン刷新</li>
+                <li>HUDレイアウトの改善・リアルタイム更新化</li>
+            </ul>
+            <div class="changelog-ver" style="display:flex; align-items:center;">
+                Ver.1.0.0
+                <a href="ver100.html"
+                    style="font-size:11px; background:#f0e6d2; color:#5a3b22; padding:2px 8px; border-radius:12px; text-decoration:none; margin-left:8px; border:1px solid #dcb589; transition:background 0.2s;"
+                    onmouseover="this.style.background='#e3d4ba'" onmouseout="this.style.background='#f0e6d2'">▶
+                    旧版で遊ぶ</a>
+                <span style="font-size:11px; font-weight:normal; color:#888; margin-left:auto;">(2026/03/01)</span>
+            </div>
+            <ul class="changelog-list">
+                <li>うどんクリッカー リリース！</li>
+                <li>うどんを打って世界を広げよう</li>
+            </ul>
+        </div>
+    </div>
+
+    <div id="silver-shrimp" class="rare-item" onpointerdown="catchShrimp(event)"><img src="s_ebiten.png"
+            style="width:100%"></div>
+    <div id="golden-fox" class="rare-item" onpointerdown="catchFox(event)"><img src="g_kitune.png" style="width:100%">
+    </div>
+
+    <script>
+        let udon = 0; let totalUdonEver = 0; let baseMultiplier = 1.0; let feverMultiplier = 1.0;
+        let manualClickCount = parseInt(localStorage.getItem('udon_clicks_v39') || 0);
+        let sessionStartTime = Date.now(); let lapStartTime = Date.now();
+        let feverTimeLeft = 0;
+        let feverTimerId = null;
+
+        let cumulativePastTime = parseInt(localStorage.getItem('udon_total_time_v39') || 0);
+        let prestigeCount = parseInt(localStorage.getItem('udon_prestige_v39') || 0);
+        let lapHistory = JSON.parse(localStorage.getItem('udon_lap_history_v39') || "[]");
+        let bestLap = localStorage.getItem('udon_best_lap_v39') || null;
+        let firstLap = localStorage.getItem('udon_first_lap_v39') || null;
+
+        function formatNumber(num) {
+            if (num < 1e9) return Math.floor(num).toLocaleString();
+            return num.toExponential(2);
+        }
+        function formatNumberFloat(num) {
+            if (num < 1e9) return num.toLocaleString(undefined, { maximumFractionDigits: 1 });
+            return num.toExponential(2);
+        }
+
+        const shopItems = [
+            { name: "袋うどん", cost: 15, baseCost: 15, power: 0.2, count: 0, scale: 1.15, unlocked: true, flavor: "スーパーで特売されている一般的なうどん。" },
+            { name: "乾燥うどん", cost: 150, baseCost: 150, power: 1.5, count: 0, scale: 1.15, unlocked: false, flavor: "日持ちする頼もしい備蓄食料。" },
+            { name: "冷凍うどん", cost: 1500, baseCost: 1500, power: 15, count: 0, scale: 1.16, unlocked: false, flavor: "レンジでチンするだけでコシのある本格派。" },
+            { name: "手打ちうどん", cost: 12000, baseCost: 12000, power: 100, count: 0, scale: 1.17, unlocked: false, flavor: "職人が足で踏み、精魂込めて打った逸品。" },
+            { name: "うどん製麺機", cost: 80000, baseCost: 80000, power: 600, count: 0, scale: 1.18, unlocked: false, flavor: "自動で均一な麺を延々と生み出す機械。" },
+            { name: "うどん屋台", cost: 500000, baseCost: 500000, power: 3500, count: 0, scale: 1.19, unlocked: false, flavor: "深夜の街に響くチャルメラ……ではなくうどん。" },
+            { name: "うどん自販機", cost: 2000000, baseCost: 2000000, power: 12000, count: 0, scale: 1.20, unlocked: false, flavor: "昭和レトロな自販機。25秒で熱々が出てくる。" },
+            { name: "うどん店舗", cost: 10000000, baseCost: 10000000, power: 50000, count: 0, scale: 1.20, unlocked: false, flavor: "ついに自分の城を持った。行列が絶えない。" },
+            { name: "うどんチェーン", cost: 60000000, baseCost: 60000000, power: 250000, count: 0, scale: 1.21, unlocked: false, flavor: "全国展開を開始。どこでも同じ味が楽しめる。" },
+            { name: "うどんセンター", cost: 400000000, baseCost: 400000000, power: 1500000, count: 0, scale: 1.22, unlocked: false, flavor: "各店舗へ麺とつゆを配送する巨大物流拠点。" },
+            { name: "うどん工場", cost: 2500000000, baseCost: 2500000000, power: 10000000, count: 0, scale: 1.25, unlocked: false, flavor: "24時間稼働でメガトン級のうどんを生産する。" },
+            { name: "うどん研究所", cost: 15000000000, baseCost: 15000000000, power: 55000000, count: 0, scale: 1.28, unlocked: false, flavor: "分子レベルで「コシ」と「のどごし」を研究。" },
+            { name: "うどんジェネレータ", cost: 80000000000, baseCost: 80000000000, power: 300000000, count: 0, scale: 1.30, unlocked: false, flavor: "無からうどんを生成する夢の装置。" },
+            { name: "うどん県", cost: 500000000000, baseCost: 500000000000, power: 1800000000, count: 0, scale: 1.33, unlocked: false, flavor: "行政のすべてがうどんを中心に回る独立自治体。" },
+            { name: "うどん王国", cost: 5e12, baseCost: 5e12, power: 1.5e10, count: 0, scale: 1.35, unlocked: false, flavor: "国王はうどん。国民の主食もうどん。" },
+            { name: "うどん大陸", cost: 5e13, baseCost: 5e13, power: 1e11, count: 0, scale: 1.37, unlocked: false, flavor: "地殻が小麦粉、海がダシで構成された新大陸。" },
+            { name: "うどん星", cost: 5e14, baseCost: 5e14, power: 1e12, count: 0, scale: 1.39, unlocked: false, flavor: "宇宙から見ると白く輝く、うどんに覆われた惑星。" },
+            { name: "うどんメタバース", cost: 1e16, baseCost: 1e16, power: 1e13, count: 0, scale: 1.41, unlocked: false, flavor: "仮想空間で全人類が永遠にうどんをすする世界。" },
+            { name: "うどん錬金術", cost: 2e17, baseCost: 2e17, power: 1e14, count: 0, scale: 1.43, unlocked: false, flavor: "卑金属を黄金のうどんに変成する禁忌の秘術。" },
+            { name: "うどん銀河", cost: 5e18, baseCost: 5e18, power: 1.5e15, count: 0, scale: 1.45, unlocked: false, flavor: "星々がうどんの渦となって輝く巨大な銀河系。" },
+            { name: "うどん軌道エレベータ", cost: 1e20, baseCost: 1e20, power: 1e16, count: 0, scale: 1.48, unlocked: false, flavor: "宇宙空間へ出来立てのうどんを輸送する建造物。" },
+            { name: "うどん特異点", cost: 2e21, baseCost: 2e21, power: 1.5e17, count: 0, scale: 1.51, unlocked: false, flavor: "うどんの密度が無限大に達し、物理法則が崩壊する。" },
+            { name: "うどんブラックホール", cost: 5e22, baseCost: 5e22, power: 2e18, count: 0, scale: 1.54, unlocked: false, flavor: "事象の地平面を超え、すべてをうどんに変える天体。" },
+            { name: "うどんビッグバン", cost: 1e24, baseCost: 1e24, power: 2e19, count: 0, scale: 1.57, unlocked: false, flavor: "超高熱のうどんスープが爆発し、新たな宇宙が誕生する。" },
+            { name: "うどんマルチバース", cost: 2e25, baseCost: 2e25, power: 2.5e20, count: 0, scale: 1.60, unlocked: false, flavor: "無数に分岐する並行宇宙を、うどんの概念が埋め尽くす。" },
+            { name: "うどんという概念", cost: 5e26, baseCost: 5e26, power: 3e21, count: 0, scale: 1.65, unlocked: false, flavor: "在りて在るもの。すべてはうどんであり、うどんはすべてである。" }
+        ];
+
+        const toppings = [
+            { name: "揚げたて天かす", cost: 3, baseCost: 3, level: 0, val: 1, desc: "1手動生産につき +1 玉", scale: 1.15, flavor: "サクサクと軽快な音が、うどん作りを加速させる。", cat: "manual" },
+            { name: "ふわふわとろろ芋", cost: 15000, baseCost: 15000, level: 0, val: 0.01, desc: "手動生産回数×1%の手動生産効率強化", scale: 4.5, flavor: "すり鉢で空気を含ませた、ふんわり強烈な粘り気。", cat: "manual" },
+            { name: "だし香るぶっかけつゆ", cost: 1000, baseCost: 1000, level: 0, val: 1.0, desc: "「〜うどん」の生産効率を +100% 強化", scale: 2.2, flavor: "ベースの旨味を何倍にも引き上げる、濃厚で奥深い一杯。", cat: "auto" },
+            { name: "彩り添える九条ネギ", cost: 2500, baseCost: 2500, level: 0, val: 0.1, desc: "全自動生産効率を +10% 強化", scale: 2.5, flavor: "爽やかな風味と食感が、全体の活気を底上げする万能薬味。", cat: "auto" },
+            { name: "じっくり煮込んだ牛すじ", cost: 15000, baseCost: 15000, level: 0, val: 0.0001, desc: "プレイ時間(秒)×0.01%の生産効率強化", scale: 3.2, flavor: "長時間の煮込みが、圧倒的な旨味と深いコクを生み出す。", cat: "other" },
+            { name: "旨味とろけるおぼろ昆布", cost: 100, baseCost: 100, level: 0, val: 0.05, desc: "レアうどんの出現率を +5% 向上", scale: 1.8, flavor: "熱いつゆに溶け込み、幻のうどんを引き寄せる縁起物。", cat: "other" }
+        ];
+
+        function getMaxItemIndex() {
+            if (prestigeCount === 0) return 13;
+            if (prestigeCount === 1) return 16;
+            if (prestigeCount === 2) return 19;
+            if (prestigeCount === 3) return 22;
+            return shopItems.length - 1;
+        }
+
+        function formatTime(ms) { if (!ms || ms < 0) return "--:--:--"; let s = Math.floor(ms / 1000); let m = Math.floor(s / 60); let h = Math.floor(m / 60); return [h, m % 60, s % 60].map(v => v.toString().padStart(2, '0')).join(':'); }
+        function calculateTotalSpent(baseCost, scale, count) {
+            if (count === 0) return 0;
+            if (scale === 1) return baseCost * count;
+            return baseCost * (1 - Math.pow(scale, count)) / (1 - scale);
+        }
+
+        function loadGameState() {
+            const saved = localStorage.getItem('udon_state_v39');
+            if (saved) {
+                try {
+                    const state = JSON.parse(saved);
+                    udon = state.udon || 0;
+                    totalUdonEver = state.totalUdonEver || 0;
+                    if (state.lapStartTime) lapStartTime = state.lapStartTime;
+
+                    if (state.shopCounts) {
+                        shopItems.forEach((it, i) => {
+                            if (state.shopCounts[i] !== undefined) it.count = state.shopCounts[i];
+                            if (state.shopUnlocked && state.shopUnlocked[i] !== undefined) it.unlocked = state.shopUnlocked[i];
+                            if (state.shopCosts && state.shopCosts[i] !== undefined) it.cost = state.shopCosts[i];
+                        });
+                    }
+                    if (state.toppingLevels) {
+                        toppings.forEach((tp, i) => {
+                            if (state.toppingLevels[i] !== undefined) tp.level = state.toppingLevels[i];
+                            if (state.toppingCosts && state.toppingCosts[i] !== undefined) tp.cost = state.toppingCosts[i];
+                        });
+                    }
+                } catch (e) { console.error("Save load failed", e); }
+            }
+        }
+
+        function saveGameState() {
+            const state = {
+                udon: udon,
+                totalUdonEver: totalUdonEver,
+                lapStartTime: lapStartTime,
+                shopCounts: shopItems.map(it => it.count),
+                shopUnlocked: shopItems.map(it => it.unlocked),
+                shopCosts: shopItems.map(it => it.cost),
+                toppingLevels: toppings.map(tp => tp.level),
+                toppingCosts: toppings.map(tp => tp.cost)
+            };
+            localStorage.setItem('udon_state_v39', JSON.stringify(state));
+            localStorage.setItem('udon_total_time_v39', Date.now() - sessionStartTime + cumulativePastTime);
+            localStorage.setItem('udon_clicks_v39', manualClickCount);
+        }
+
+        function init() {
+            loadGameState();
+            if (localStorage.getItem('udon_mult_v39')) { baseMultiplier = parseFloat(localStorage.getItem('udon_mult_v39')); }
+            const sList = document.getElementById("shop-list");
+            let maxIndex = getMaxItemIndex();
+
+            shopItems.forEach((it, i) => {
+                const div = document.createElement("div");
+                div.id = `shop-${i}`;
+                div.className = "list-item disabled";
+                if (i > maxIndex) it.unlocked = false;
+                div.style.display = it.unlocked ? "flex" : "none";
+                div.onclick = () => buyShopItem(i);
+                sList.appendChild(div);
+            });
+
+            const tListMan = document.getElementById("topping-list-manual");
+            const tListAuto = document.getElementById("topping-list-auto");
+            const tListOth = document.getElementById("topping-list-other");
+
+            toppings.forEach((tp, i) => {
+                const div = document.createElement("div");
+                div.id = `top-${i}`;
+                div.className = "list-item disabled";
+                div.onclick = () => buyTopping(i);
+
+                if (tp.cat === "manual") tListMan.appendChild(div);
+                else if (tp.cat === "auto") tListAuto.appendChild(div);
+                else tListOth.appendChild(div);
+            });
+            updateStaticUI();
+        }
+
+        function getAutoPower() {
+            let rawPwr = 0;
+            for (let [i, it] of shopItems.entries()) {
+                let itemPwr = it.power;
+                if (i <= 3) itemPwr *= (1 + (toppings[2].level * toppings[2].val));
+                rawPwr += it.count * itemPwr;
+            }
+
+            let timeSeconds = Math.floor((Date.now() - lapStartTime) / 1000);
+            let timeBonus = 1 + (timeSeconds * toppings[4].level * toppings[4].val);
+
+            return rawPwr * (1 + (toppings[3].level * toppings[3].val)) * timeBonus * baseMultiplier * feverMultiplier;
+        }
+
+        function getClickPower() {
+            let base = (1 + (toppings[0].level * toppings[0].val));
+            let synergyMultiplier = 1 + (manualClickCount * toppings[1].level * toppings[1].val);
+
+            let timeSeconds = Math.floor((Date.now() - lapStartTime) / 1000);
+            let timeBonus = 1 + (timeSeconds * toppings[4].level * toppings[4].val);
+
+            return base * synergyMultiplier * timeBonus * baseMultiplier * feverMultiplier;
+        }
+
+        function clickUdon(e) {
+            if (e && typeof e.preventDefault === 'function') e.preventDefault();
+
+            const udonImg = document.querySelector('#udon-button img');
+            udonImg.style.transform = 'scale(0.9)';
+            setTimeout(() => { udonImg.style.transform = 'scale(1)'; }, 100);
+
+            manualClickCount++;
+            const gain = getClickPower();
+            udon += gain;
+            totalUdonEver += gain;
+
+            const float = document.createElement("div");
+            float.className = "click-amt";
+            let pt = "+" + formatNumberFloat(gain);
+            const rand = Math.random();
+            if (rand < 0.1) pt += " ✨"; else if (rand < 0.15) pt += " 🍜";
+            float.innerText = pt;
+
+            let dx = (Math.random() - 0.5) * 60;
+            float.style.setProperty('--dx', dx + 'px');
+            let x = window.innerWidth / 2;
+            let y = window.innerHeight / 2;
+            if (e) {
+                if (e.clientX !== undefined) { x = e.clientX + window.scrollX; y = e.clientY + window.scrollY; }
+                else if (e.touches && e.touches.length > 0) { x = e.touches[0].clientX + window.scrollX; y = e.touches[0].clientY + window.scrollY; }
+            }
+
+            float.style.left = (x - 20) + "px";
+            float.style.top = (y - 40) + "px";
+            document.body.appendChild(float);
+            setTimeout(() => float.remove(), 800);
+        }
+
+        function updateStaticUI() {
+            const isPro = baseMultiplier > 1.0;
+            document.getElementById("mult-display-container").style.display = isPro ? "block" : "none";
+
+            document.getElementById("total-play-time-label").innerText = "🕒 起動時間:";
+            if (prestigeCount > 0) {
+                document.getElementById("current-lap-label").innerText = "今回のプレイ時間:";
+            } else {
+                document.getElementById("current-lap-label").innerText = "プレイ時間:";
+            }
+
+            const historyContainer = document.getElementById("lap-history");
+            if (lapHistory.length > 0) {
+                historyContainer.style.display = "flex";
+                let html = "<div style='font-size:14px; margin-bottom:8px; border-bottom:1px solid #deb887; padding-bottom:4px;'>🏁 秘伝継承</div>";
+                lapHistory.forEach((lapData, index) => {
+                    let lapTime = typeof lapData === 'number' ? lapData : lapData.time;
+                    let lapDateStr = lapData.date ? new Date(lapData.date).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : "";
+                    html += `<div class="lap-entry" style="display:flex; align-items:flex-end; margin-bottom: 6px;">
+                        <span style="flex-shrink:0; font-weight:bold; color:#5a3b22;">${index + 1}周目</span>
+                        <div style="flex-grow:1; border-bottom:1px dotted #dcb589; margin:0 12px; position:relative; top:-6px; opacity:0.6;"></div>
+                        <div style="text-align:right; display:flex; align-items:baseline; gap:8px; flex-shrink:0;">
+                            <span style="font-family:monospace; font-size:15px; letter-spacing:1px; color:#8b4513;">${formatTime(lapTime)}</span>
+                            ${lapDateStr ? `<span style="font-size:11px; color:#a0a0a0;">${lapDateStr}</span>` : ''}
+                        </div>
+                    </div>`;
+                });
+                historyContainer.innerHTML = html;
+            } else {
+                historyContainer.style.display = "none";
+            }
+        }
+
+        function fastTick() {
+            const now = Date.now();
+            document.getElementById("total-play-time").innerText = formatTime(now - sessionStartTime + cumulativePastTime);
+            document.getElementById("current-lap-time").innerText = formatTime(now - lapStartTime);
+            document.getElementById("total-count").innerText = formatNumber(udon);
+
+            const currentUps = getAutoPower();
+            document.getElementById("ups-display").innerText = formatNumberFloat(currentUps);
+            document.getElementById("upc-display").innerText = formatNumberFloat(getClickPower());
+            document.getElementById("mult-display").innerText = formatNumberFloat(baseMultiplier);
+
+            document.getElementById("manual-click-display").innerText = formatNumber(manualClickCount);
+
+            let timeSec = Math.floor((now - sessionStartTime + cumulativePastTime) / 1000);
+            let lapTimeSec = Math.floor((now - lapStartTime) / 1000);
+
+            let rareRate = (toppings[5].level * toppings[5].val) * 100;
+            document.getElementById("rare-rate-display").innerText = rareRate.toFixed(1);
+
+            toppings.forEach((tp, i) => {
+                const el = document.getElementById(`top-${i}`);
+                if (!el) return;
+                let status = "";
+                if (i === 0) status = `+${formatNumber(tp.level * tp.val)} 玉`;
+                else if (i === 1) status = `+${formatNumberFloat(manualClickCount * tp.level * tp.val * 100)}%`;
+                else if (i === 4) status = `+${formatNumberFloat(lapTimeSec * tp.level * tp.val * 100)}%`;
+                else status = `+${formatNumberFloat(tp.level * tp.val * 100)}%`;
+
+                let totalSpent = calculateTotalSpent(tp.baseCost, tp.scale, tp.level);
+                el.innerHTML = `<div class="item-info"><span class="item-name">${tp.name} [Lv.${tp.level}]</span><span class="item-desc">${tp.desc}　</span><div style="margin-top:2px;"><span class="item-total" style="color:#d2691e; font-weight:bold;">状況: ${status}</span></div></div><div style="text-align:right; border-left:1px solid #eee; padding-left:5px; margin-left:5px; min-width:65px; display:flex; flex-direction:column; justify-content:center;"><span class="item-cost" style="border:none; padding:0; margin:0; min-width:0;">${formatNumber(tp.cost)} 玉</span><span style="font-size:10px; color:#888; font-weight:bold; margin-top:2px;">累計: ${formatNumber(Math.floor(totalSpent))}</span></div><span class="item-flavor">${tp.flavor}</span>`;
+                el.classList.toggle("disabled", udon < tp.cost);
+            });
+
+            if (feverTimeLeft > 0) {
+                feverTimeLeft -= 0.1;
+                let percentage = (feverTimeLeft / 10.0) * 100;
+                document.getElementById("fever-gauge").style.width = percentage + "%";
+
+                if (feverTimeLeft <= 0) {
+                    feverTimeLeft = 0;
+                    feverMultiplier = 1.0;
+                    document.body.classList.remove("fever-mode");
+                    document.getElementById("fever-timer").style.display = "none";
+                }
+            }
+
+            let currentTargetIndex = 13;
+            if (prestigeCount === 1) currentTargetIndex = 16;
+            if (prestigeCount === 2) currentTargetIndex = 19;
+            if (prestigeCount === 3) currentTargetIndex = 22;
+            if (prestigeCount >= 4) currentTargetIndex = 25;
+
+            let canPrestige = shopItems[currentTargetIndex].count >= 2;
+            let reqMsg = `条件：${shopItems[currentTargetIndex].name} Lv.2以上`;
+
+            const pContainer = document.getElementById("prestige-container");
+
+            if (shopItems[currentTargetIndex].unlocked) {
+                pContainer.style.display = "flex";
+                const pBtn = document.getElementById("prestige-btn");
+                const pLockMsg = document.getElementById("prestige-lock-msg");
+
+                if (canPrestige) {
+                    pBtn.classList.remove("locked");
+                    pLockMsg.style.display = "none";
+                } else {
+                    pBtn.classList.add("locked");
+                    pLockMsg.style.display = "block";
+                    pLockMsg.innerText = reqMsg;
+                }
+            } else {
+                pContainer.style.display = "none";
+            }
+            const unlockText = document.getElementById("prestige-unlock-text");
+            if (unlockText) {
+                unlockText.style.display = prestigeCount >= 4 ? "none" : "inline";
+            }
+        }
+
+        function slowTick() {
+            let maxIndex = getMaxItemIndex();
+            let newUnlock = false;
+
+            shopItems.forEach((it, i) => {
+                const el = document.getElementById(`shop-${i}`);
+                if (!it.unlocked && udon >= it.cost && i <= maxIndex) {
+                    it.unlocked = true;
+                    newUnlock = true;
+                }
+
+                if (i > maxIndex) {
+                    el.style.display = "none";
+                    it.unlocked = false;
+                } else if (it.unlocked) {
+                    el.style.display = "flex";
+                } else {
+                    el.style.display = "none";
+                }
+
+                if (it.unlocked) {
+                    let itemPwr = it.power;
+                    if (i <= 3) itemPwr *= (1 + (toppings[2].level * toppings[2].val));
+                    let contrib = it.count * itemPwr * (1 + (toppings[3].level * toppings[3].val)) * baseMultiplier * feverMultiplier;
+                    let totalSpent = calculateTotalSpent(it.baseCost, it.scale, it.count);
+                    el.innerHTML = `<div class="item-info"><span class="item-name">${it.name} [Lv.${it.count}]</span><span class="item-desc">基礎: +${formatNumberFloat(it.power)}　</span><div style="margin-top:2px;"><span class="item-total" style="color:#d2691e; font-weight:bold;">貢献: +${formatNumberFloat(contrib)}/s</span></div></div><div style="text-align:right; border-left:1px solid #eee; padding-left:5px; margin-left:5px; min-width:65px; display:flex; flex-direction:column; justify-content:center;"><span class="item-cost" style="border:none; padding:0; margin:0; min-width:0;">${formatNumber(it.cost)} 玉</span><span style="font-size:10px; color:#888; font-weight:bold; margin-top:2px;">累計: ${formatNumber(Math.floor(totalSpent))}</span></div><span class="item-flavor">${it.flavor}</span>`;
+                    el.classList.toggle("disabled", udon < it.cost);
+                }
+            });
+
+            if (newUnlock) {
+                const panel = document.getElementById("shop-panel");
+                panel.scrollTo({ top: panel.scrollHeight, behavior: 'smooth' });
+            }
+
+            saveGameState();
+        }
+
+        function buyShopItem(i) { if (udon >= shopItems[i].cost) { udon -= shopItems[i].cost; shopItems[i].count++; shopItems[i].cost *= shopItems[i].scale; fastTick(); } }
+        function buyTopping(i) { if (udon >= toppings[i].cost) { udon -= toppings[i].cost; toppings[i].level++; toppings[i].cost *= toppings[i].scale; fastTick(); } }
+
+        function executePrestige() {
+            let currentTargetIndex = 13;
+            if (prestigeCount === 1) currentTargetIndex = 16;
+            if (prestigeCount === 2) currentTargetIndex = 19;
+            if (prestigeCount === 3) currentTargetIndex = 22;
+            if (prestigeCount >= 4) currentTargetIndex = 25;
+
+            if (shopItems[currentTargetIndex].count < 2) return;
+
+            const lapTime = Date.now() - lapStartTime;
+            lapHistory.push({ time: lapTime, date: Date.now() });
+            localStorage.setItem('udon_lap_history_v39', JSON.stringify(lapHistory));
+
+            if (baseMultiplier === 1.0 && prestigeCount === 0) {
+                baseMultiplier = 3.0;
+            } else {
+                baseMultiplier *= 3;
+            }
+            prestigeCount++;
+
+            localStorage.setItem('udon_mult_v39', baseMultiplier);
+            localStorage.setItem('udon_prestige_v39', prestigeCount);
+
+            udon = 0;
+            totalUdonEver = 0;
+            manualClickCount = 0;
+            let maxIndex = getMaxItemIndex();
+            shopItems.forEach((it, i) => {
+                it.count = 0;
+                it.unlocked = (i === 0);
+                it.cost = it.baseCost;
+                const el = document.getElementById(`shop-${i}`);
+                if (el) el.style.display = it.unlocked && i <= maxIndex ? "flex" : "none";
+            });
+            toppings.forEach(tp => { tp.level = 0; tp.cost = tp.baseCost; });
+            lapStartTime = Date.now();
+
+            feverTimeLeft = 0;
+            feverMultiplier = 1.0;
+            document.body.classList.remove("fever-mode");
+            document.getElementById("fever-timer").style.display = "none";
+
+            const notify = document.getElementById("notify-msg");
+            notify.innerText = `周回完了！生産倍率が ${formatNumberFloat(baseMultiplier)} 倍になりました！`;
+            notify.style.display = "block"; notify.style.animation = "fadeOutMsg 2.5s forwards";
+            setTimeout(() => { notify.style.display = "none"; notify.style.animation = ""; }, 2500);
+
+            saveGameState();
+            updateStaticUI(); fastTick(); slowTick();
+        }
+
+        function confirmHardReset() {
+            if (confirm("本当に全てのデータを初期化しますか？\n（所持うどん、設備、起動時間、周回数など全てが消去されます。元には戻せません！）")) {
+                saveGameState = function () { }; // 初期化処理中はオートセーブを無効化する
+
+                localStorage.removeItem('udon_mult_v39');
+                localStorage.removeItem('udon_prestige_v39');
+                localStorage.removeItem('udon_lap_history_v39');
+                localStorage.removeItem('udon_total_time_v39');
+                localStorage.removeItem('udon_clicks_v39');
+                localStorage.removeItem('udon_state_v39');
+
+                location.reload();
+            }
+        }
+
+        let rareElements = [];
+        function showRareItem(type) {
+            if (rareElements.length >= 2) return;
+
+            const el = document.createElement("div");
+            el.className = "rare-item";
+            el.innerHTML = `<img src="${type === 'silver-shrimp' ? 's_ebiten.png' : 'g_kitune.png'}" style="width:100%; pointer-events:none;">`;
+
+            let interval = null;
+            el.onpointerdown = (e) => {
+                if (e && typeof e.preventDefault === 'function') e.preventDefault();
+                clearInterval(interval);
+                rareElements = rareElements.filter(x => x !== el);
+                el.remove();
+                if (type === 'silver-shrimp') catchShrimpLogic(e);
+                else catchFoxLogic(e);
+            };
+
+            const startX = Math.random() * 80 + 10;
+            let pos = -150;
+            el.style.left = startX + "vw";
+            el.style.display = "block";
+            let wavePhase = Math.random() * Math.PI * 2;
+            document.body.appendChild(el);
+            rareElements.push(el);
+
+            interval = setInterval(() => {
+                pos += 2.5;
+                let waveOffset = Math.sin((pos / 40) + wavePhase) * 30;
+                el.style.transform = `translate3d(0, ${-pos}px, 0) translateY(${waveOffset}px)`;
+                if (pos > window.innerHeight + 300) {
+                    clearInterval(interval);
+                    rareElements = rareElements.filter(x => x !== el);
+                    if (el.parentNode) el.remove();
+                }
+            }, 16);
+        }
+
+        function showBonusEffectFixed(x, y, text, color) {
+            const float = document.createElement("div");
+            float.className = "bonus-text";
+            float.style.color = color;
+            float.innerHTML = text; // 改行を反映させるためinnerHTMLに変更
+            float.style.textAlign = "center";
+            float.style.left = (x - 80) + "px";
+            float.style.top = (y - 20) + "px";
+            document.body.appendChild(float);
+            setTimeout(() => float.remove(), 1200);
+        }
+
+        function catchShrimpLogic(e) {
+            const flash = document.getElementById("flash-overlay");
+            flash.classList.remove("do-flash");
+            void flash.offsetWidth;
+            flash.classList.add("do-flash");
+
+            const bonus = Math.floor(getAutoPower() * 20) + 100;
+            udon += bonus;
+            totalUdonEver += bonus;
+
+            let x = window.innerWidth / 2;
+            let y = window.innerHeight / 2;
+            if (e) {
+                if (e.clientX !== undefined) { x = e.clientX; y = e.clientY; }
+                else if (e.touches && e.touches.length > 0) { x = e.touches[0].clientX; y = e.touches[0].clientY; }
+            }
+
+            showBonusEffectFixed(x, y, "海老天ボーナス！<br>+" + formatNumber(bonus), "#d2691e");
+            fastTick();
+        }
+
+        function catchFoxLogic(e) {
+            feverMultiplier = 3.0;
+            feverTimeLeft = 10.0;
+            document.body.classList.add("fever-mode");
+            document.getElementById("fever-timer").style.display = "block";
+
+            let x = window.innerWidth / 2;
+            let y = window.innerHeight / 2;
+            if (e) {
+                if (e.clientX !== undefined) { x = e.clientX; y = e.clientY; }
+                else if (e.touches && e.touches.length > 0) { x = e.touches[0].clientX; y = e.touches[0].clientY; }
+            }
+
+            showBonusEffectFixed(x, y, "きつねボーナス！ x3", "#ffd700");
+            fastTick();
+        }
+
+        setInterval(() => {
+            let chance = (toppings[5].level * toppings[5].val);
+            if (chance <= 0) return;
+
+            let count = 0;
+            if (chance > 1.0) {
+                count = 1;
+                if (Math.random() < (chance - 1.0)) count = 2;
+            } else {
+                if (Math.random() < chance) count = 1;
+            }
+
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => {
+                    showRareItem(Math.random() < 0.6 ? "silver-shrimp" : "golden-fox");
+                }, i * 2000);
+            }
+        }, 12000);
+        setInterval(() => { udon += getAutoPower() / 10; fastTick(); }, 100);
+        setInterval(slowTick, 500); init();
+    </script>
+    <div id="credit"
+        style="position:fixed; bottom:10px; right:15px; font-size:11px; color:#deb887; text-align:right; z-index:100; pointer-events:none; opacity:0.8;">
+        Created by 蒼井めがね (X: @mykasi)<br>
+        Assisted by Gemini
+    </div>
+</body>
+
+</html>
